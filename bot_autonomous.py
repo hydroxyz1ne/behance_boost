@@ -95,7 +95,7 @@ def add_group(update: Update, context: CallbackContext):
         update.message.reply_text(f"✅ Группа {chat_id} добавлена.", reply_markup=ReplyKeyboardRemove())
     else:
         update.message.reply_text("Группа уже в списке.", reply_markup=ReplyKeyboardRemove())
-    return ConversationHandler.END
+    return start(update, context)
 
 def remove_group(update: Update, context: CallbackContext):
     chat_id = update.message.text.strip()
@@ -106,12 +106,7 @@ def remove_group(update: Update, context: CallbackContext):
         update.message.reply_text(f"❌ Группа {chat_id} удалена.", reply_markup=ReplyKeyboardRemove())
     else:
         update.message.reply_text("Такой группы нет в списке.", reply_markup=ReplyKeyboardRemove())
-    return ConversationHandler.END
-
-def add_case_name(update: Update, context: CallbackContext):
-    context.user_data['new_case_name'] = update.message.text.strip()
-    update.message.reply_text("Теперь введи ссылку на кейс:")
-    return ADD_CASE_URL
+    return start(update, context)
 
 def add_case_url(update: Update, context: CallbackContext):
     case_url = update.message.text.strip()
@@ -120,7 +115,7 @@ def add_case_url(update: Update, context: CallbackContext):
     cases[case_name] = case_url
     save_json(CASES_FILE, cases)
     update.message.reply_text(f"✅ Кейс «{case_name}» добавлен.", reply_markup=ReplyKeyboardRemove())
-    return ConversationHandler.END
+    return start(update, context)
 
 def delete_case(update: Update, context: CallbackContext):
     case_name = update.message.text.strip()
@@ -131,18 +126,19 @@ def delete_case(update: Update, context: CallbackContext):
         update.message.reply_text(f"❌ Кейс «{case_name}» удалён.", reply_markup=ReplyKeyboardRemove())
     else:
         update.message.reply_text("Такой кейс не найден.", reply_markup=ReplyKeyboardRemove())
-    return ConversationHandler.END
+    return start(update, context)
 
 def send_selected_case(update: Update, context: CallbackContext):
     case_name = update.message.text.strip()
     cases = load_json(CASES_FILE)
     if case_name not in cases:
         update.message.reply_text("Такой кейс не найден.")
-        return ConversationHandler.END
+        return start(update, context)
     url = cases[case_name]
     update.message.reply_text(f"🚀 Начинаю рассылку кейса: {case_name}", reply_markup=ReplyKeyboardRemove())
     asyncio.run(send_with_telethon(url))
-    return ConversationHandler.END
+    return start(update, context)
+
 
 async def send_with_telethon(url):
     client = TelegramClient("session_user", API_ID, API_HASH)
