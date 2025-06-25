@@ -108,6 +108,11 @@ def remove_group(update: Update, context: CallbackContext):
         update.message.reply_text("Такой группы нет в списке.", reply_markup=ReplyKeyboardRemove())
     return start(update, context)
 
+def add_case_name(update: Update, context: CallbackContext):
+    context.user_data['new_case_name'] = update.message.text.strip()
+    update.message.reply_text("Теперь введи ссылку на кейс:")
+    return ADD_CASE_URL
+
 def add_case_url(update: Update, context: CallbackContext):
     case_url = update.message.text.strip()
     case_name = context.user_data['new_case_name']
