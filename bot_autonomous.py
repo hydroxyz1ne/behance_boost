@@ -146,7 +146,7 @@ def send_selected_case(update: Update, context: CallbackContext):
 
 
 async def send_with_telethon(url):
-    client = TelegramClient("session_user", API_ID, API_HASH)
+    client = TelegramClient("session_name", API_ID, API_HASH)
     await client.start()
     chats = load_json(CHATS_FILE)
     for chat_id in chats:
