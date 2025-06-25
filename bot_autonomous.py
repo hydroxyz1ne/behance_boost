@@ -1,6 +1,7 @@
 from telegram.ext import Updater, CommandHandler
 import json
 import asyncio
+import random
 from telethon import TelegramClient
 
 # === Настройки ===
@@ -58,7 +59,8 @@ async def run_sender():
         try:
             await client.send_message(chat_id, f'🔥 Новый кейс: {task["url"]}')
             print(f"✅ Отправлено в {chat_id}")
-            await asyncio.sleep(2)
+            delay = random.uniform(2, 4)
+            await asyncio.sleep(delay)
         except Exception as e:
             print(f"⚠️ Ошибка {chat_id}: {e}")
     await client.disconnect()
@@ -70,3 +72,4 @@ dp.add_handler(CommandHandler('listchats', listchats))
 dp.add_handler(CommandHandler('boost', boost))
 updater.start_polling()
 updater.idle()
+
