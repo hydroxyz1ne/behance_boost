@@ -230,3 +230,56 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telethon.tl.types import Channel
+from telethon.errors import FloodWaitError
+
+PARSE_KEYWORDS = ['behance', 'dribbble', 'like4like', 'design']
+EXCLUDE_KEYWORDS = ['портфолио', 'кейсы']
+NEW_CHAT_IDS = set()
+
+async def search_and_send_chats(context: CallbackContext):
+    user_id = context.job.context
+    async with TelegramClient("session_name", API_ID, API_HASH) as client:
+        found_chats = []
+        async for dialog in client.iter_dialogs():
+            entity = dialog.entity
+            if isinstance(entity, Channel) and entity.megagroup:
+                title = (entity.title or "").lower()
+                about = (getattr(entity, 'about', '') or "").lower()
+                if any(k in title or k in about for k in PARSE_KEYWORDS) and not any(bad in title or bad in about for bad in EXCLUDE_KEYWORDS):
+                    found_chats.append((entity.id, entity.username or f"https://t.me/c/{entity.id}", entity.title))
+
+        for chat_id, link, title in found_chats:
+            if chat_id in get_groups():
+                continue
+            if chat_id in NEW_CHAT_IDS:
+                continue
+            NEW_CHAT_IDS.add(chat_id)
+
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Добавить", callback_data=f"add_{chat_id}"),
+                 InlineKeyboardButton("❌ Пропустить", callback_data=f"skip_{chat_id}")]
+            ])
+            context.bot.send_message(chat_id=user_id, text=f"Найден чат:
+<b>{title}</b>
+{link}", parse_mode="HTML", reply_markup=keyboard)
+
+def parse_chats_command(update: Update, context: CallbackContext):
+    context.bot.send_message(chat_id=update.effective_chat.id, text="🔍 Начинаю искать группы…")
+    context.job_queue.run_once(search_and_send_chats, 0, context=update.effective_chat.id)
+
+def handle_chat_parse_decision(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    data = query.data
+    if data.startswith("add_"):
+        chat_id = data.replace("add_", "")
+        add_group_db(chat_id)
+        query.edit_message_text(f"✅ Добавлен: {chat_id}")
+        
+    elif data.startswith("skip_"):
+        query.edit_message_text("⏭ Пропущено")
