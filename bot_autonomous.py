@@ -3,6 +3,9 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from telethon import TelegramClient
 from apscheduler.schedulers.background import BackgroundScheduler
 from telegram.ext import CallbackQueryHandler  # Не забудь импортировать!
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telethon.tl.types import Channel
+from telethon.errors import FloodWaitError
 import json
 import os
 import time
@@ -18,6 +21,10 @@ API_HASH = os.getenv("API_HASH")
 
 DB_FILE = 'data.db'
 timezone = pytz.timezone("Europe/Moscow")
+
+PARSE_KEYWORDS = ['behance', 'dribbble', 'like4like', 'design']
+EXCLUDE_KEYWORDS = ['портфолио', 'кейсы']
+NEW_CHAT_IDS = set()
 
 ADD_GROUP, REMOVE_GROUP, ADD_CASE_NAME, ADD_CASE_URL, SELECT_CASE_TO_SEND, SELECT_CASE_TO_DELETE = range(6)
 
@@ -196,55 +203,6 @@ def schedule_rotation():
     print(f"🚀 Автопостинг: {selected}")
     asyncio.run(send_to_groups(selected))
 
-
-# === Бот ===
-def main():
-    init_db()
-
-    updater = Updater(BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
-
-    scheduler = BackgroundScheduler(timezone=timezone)
-    scheduler.add_job(schedule_rotation, 'cron', hour=12)
-    scheduler.add_job(schedule_rotation, 'cron', hour=18)
-    scheduler.start()
-
-    conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(Filters.text & ~Filters.command, handle_menu)],
-        states={
-            ADD_GROUP: [MessageHandler(Filters.text & ~Filters.command, add_group)],
-            REMOVE_GROUP: [MessageHandler(Filters.text & ~Filters.command, remove_group)],
-            ADD_CASE_NAME: [MessageHandler(Filters.text & ~Filters.command, add_case_name)],
-            ADD_CASE_URL: [MessageHandler(Filters.text & ~Filters.command, add_case_url)],
-            SELECT_CASE_TO_SEND: [MessageHandler(Filters.text & ~Filters.command, send_selected_case)],
-            SELECT_CASE_TO_DELETE: [MessageHandler(Filters.text & ~Filters.command, delete_case)],
-        },
-        fallbacks=[CommandHandler('cancel', lambda u, c: u.message.reply_text("Отменено."))]
-    )
-
-    # === Хендлеры ===
-    dp.add_handler(CommandHandler("menu", start))
-    dp.add_handler(CommandHandler("parsechats", parse_chats_command))  # команда /parsechats
-    dp.add_handler(CallbackQueryHandler(handle_chat_parse_decision))    # кнопки "Добавить"/"Пропустить"
-    dp.add_handler(conv_handler)
-
-    updater.start_polling()
-    updater.idle()
-
-
-if __name__ == "__main__":
-    main()
-
-
-
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-from telethon.tl.types import Channel
-from telethon.errors import FloodWaitError
-
-PARSE_KEYWORDS = ['behance', 'dribbble', 'like4like', 'design']
-EXCLUDE_KEYWORDS = ['портфолио', 'кейсы']
-NEW_CHAT_IDS = set()
-
 async def search_and_send_chats(context: CallbackContext):
     user_id = context.job.context
     async with TelegramClient("session_name", API_ID, API_HASH) as client:
@@ -286,3 +244,41 @@ def handle_chat_parse_decision(update: Update, context: CallbackContext):
         
     elif data.startswith("skip_"):
         query.edit_message_text("⏭ Пропущено")
+
+# === Бот ===
+def main():
+    init_db()
+
+    updater = Updater(BOT_TOKEN, use_context=True)
+    dp = updater.dispatcher
+
+    scheduler = BackgroundScheduler(timezone=timezone)
+    scheduler.add_job(schedule_rotation, 'cron', hour=12)
+    scheduler.add_job(schedule_rotation, 'cron', hour=18)
+    scheduler.start()
+
+    conv_handler = ConversationHandler(
+        entry_points=[MessageHandler(Filters.text & ~Filters.command, handle_menu)],
+        states={
+            ADD_GROUP: [MessageHandler(Filters.text & ~Filters.command, add_group)],
+            REMOVE_GROUP: [MessageHandler(Filters.text & ~Filters.command, remove_group)],
+            ADD_CASE_NAME: [MessageHandler(Filters.text & ~Filters.command, add_case_name)],
+            ADD_CASE_URL: [MessageHandler(Filters.text & ~Filters.command, add_case_url)],
+            SELECT_CASE_TO_SEND: [MessageHandler(Filters.text & ~Filters.command, send_selected_case)],
+            SELECT_CASE_TO_DELETE: [MessageHandler(Filters.text & ~Filters.command, delete_case)],
+        },
+        fallbacks=[CommandHandler('cancel', lambda u, c: u.message.reply_text("Отменено."))]
+    )
+
+    # === Хендлеры ===
+    dp.add_handler(CommandHandler("menu", start))
+    dp.add_handler(CommandHandler("parsechats", parse_chats_command))  # команда /parsechats
+    dp.add_handler(CallbackQueryHandler(handle_chat_parse_decision))    # кнопки "Добавить"/"Пропустить"
+    dp.add_handler(conv_handler)
+
+    updater.start_polling()
+    updater.idle()
+
+
+if __name__ == "__main__":
+    main()
