@@ -203,8 +203,7 @@ def schedule_rotation():
     print(f"🚀 Автопостинг: {selected}")
     asyncio.run(send_to_groups(selected))
 
-async def search_and_send_chats(context: CallbackContext):
-    user_id = context.job.context
+async def search_and_send_chats(user_id, context: CallbackContext):
     async with TelegramClient("session_name", API_ID, API_HASH) as client:
         found_chats = []
         async for dialog in client.iter_dialogs():
@@ -216,9 +215,7 @@ async def search_and_send_chats(context: CallbackContext):
                     found_chats.append((entity.id, entity.username or f"https://t.me/c/{entity.id}", entity.title))
 
         for chat_id, link, title in found_chats:
-            if chat_id in get_groups():
-                continue
-            if chat_id in NEW_CHAT_IDS:
+            if chat_id in get_groups() or chat_id in NEW_CHAT_IDS:
                 continue
             NEW_CHAT_IDS.add(chat_id)
 
@@ -226,12 +223,11 @@ async def search_and_send_chats(context: CallbackContext):
                 [InlineKeyboardButton("✅ Добавить", callback_data=f"add_{chat_id}"),
                  InlineKeyboardButton("❌ Пропустить", callback_data=f"skip_{chat_id}")]
             ])
-            chat_title = chat.title or "Без названия"
-            context.bot.send_message(chat_id=user_id, text=f"Найден чат:\n{chat.title}\nID: {chat.id}\n{link}", parse_mode="HTML", reply_markup=keyboard)
+            context.bot.send_message(chat_id=user_id, text=f"Найден чат:\n{title}\nID: {chat_id}\n{link}", parse_mode="HTML", reply_markup=keyboard)
 
-def parse_chats_command(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, text="🔍 Начинаю искать группы…")
-    context.job_queue.run_once(search_and_send_chats, 0, context=update.effective_chat.id)
+async def parse_chats_command(update: Update, context: CallbackContext):
+    await update.message.reply_text("🔍 Начинаю искать группы…")
+    await search_and_send_chats(update.effective_chat.id, context)
 
 def handle_chat_parse_decision(update: Update, context: CallbackContext):
     query = update.callback_query
