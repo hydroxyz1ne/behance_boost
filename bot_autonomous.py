@@ -2,6 +2,7 @@ from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardB
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 from telethon import TelegramClient
 from apscheduler.schedulers.background import BackgroundScheduler
+from telegram.ext import CallbackQueryHandler  # Не забудь импортировать!
 import json
 import os
 import time
@@ -221,7 +222,10 @@ def main():
         fallbacks=[CommandHandler('cancel', lambda u, c: u.message.reply_text("Отменено."))]
     )
 
+    # === Хендлеры ===
     dp.add_handler(CommandHandler("menu", start))
+    dp.add_handler(CommandHandler("parsechats", parse_chats_command))  # команда /parsechats
+    dp.add_handler(CallbackQueryHandler(handle_chat_parse_decision))    # кнопки "Добавить"/"Пропустить"
     dp.add_handler(conv_handler)
 
     updater.start_polling()
