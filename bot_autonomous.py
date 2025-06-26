@@ -265,10 +265,7 @@ async def search_and_send_chats(context: CallbackContext):
                  InlineKeyboardButton("❌ Пропустить", callback_data=f"skip_{chat_id}")]
             ])
             chat_title = chat.title or "Без названия"
-            context.bot.send_message(chat_id=user_id, text=f"Найден чат:\n{chat_title}\nID: {chat.id}")
-
-<b>{title}</b>
-{link}", parse_mode="HTML", reply_markup=keyboard)
+            context.bot.send_message(chat_id=user_id, text=f"Найден чат:\n{chat.title}\nID: {chat.id}\n{link}", parse_mode="HTML", reply_markup=keyboard))
 
 def parse_chats_command(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, text="🔍 Начинаю искать группы…")
