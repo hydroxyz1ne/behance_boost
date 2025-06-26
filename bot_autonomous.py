@@ -234,6 +234,35 @@ def handle_chat_parse_decision(update: Update, context: CallbackContext):
         query.edit_message_text("⏭ Пропущено")
 
 # === Бот ===
+async def search_and_send_chats(user_id, context: CallbackContext):
+    async with TelegramClient("session_name", API_ID, API_HASH) as client:
+        found_chats = []
+        async for dialog in client.iter_dialogs():
+            entity = dialog.entity
+            if isinstance(entity, Channel) and entity.megagroup:
+                title = (entity.title or "").lower()
+                about = (getattr(entity, 'about', '') or "").lower()
+                if any(k in title or k in about for k in PARSE_KEYWORDS) and not any(bad in title or bad in about for bad in EXCLUDE_KEYWORDS):
+                    found_chats.append((entity.id, entity.username or f"https://t.me/c/{entity.id}", entity.title))
+
+        for chat_id, link, title in found_chats:
+            if chat_id in get_groups() or chat_id in NEW_CHAT_IDS:
+                continue
+            NEW_CHAT_IDS.add(chat_id)
+
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Добавить", callback_data=f"add_{chat_id}"),
+                 InlineKeyboardButton("❌ Пропустить", callback_data=f"skip_{chat_id}")]
+            ])
+            context.bot.send_message(chat_id=user_id, text=f"Найден чат:
+{title}
+ID: {chat_id}
+{link}", parse_mode="HTML", reply_markup=keyboard)
+
+async def parse_chats_command(update: Update, context: CallbackContext):
+    await update.message.reply_text("🔍 Начинаю искать группы…")
+    await search_and_send_chats(update.effective_chat.id, context)
+
 def main():
     init_db()
 
